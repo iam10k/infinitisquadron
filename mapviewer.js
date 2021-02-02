@@ -1,5 +1,7 @@
 if (!window) {
-  function require() {}
+  function require() {
+  }
+
   const
     React = require("react"),
     ReactDOM = require("react-dom"),
@@ -94,7 +96,9 @@ class WorldMap extends React.Component {
             lat = Number(matches[2]);
           }
 
+          let isCordsSearch = false;
           if (long && lat && !isNaN(long) && !isNaN(lat)) {
+            isCordsSearch = true;
             const cordPin = new L.Marker(GPStoLeaflet(long, lat), {
               icon: locationIcon,
             });
@@ -107,18 +111,17 @@ class WorldMap extends React.Component {
 
             map.Pins.addLayer(cordPin);
             map.flyTo(GPStoLeaflet(long, lat), 2.5);
-            return;
           }
 
           map.IslandResources.eachLayer(function (layer) {
-            if (search !== "" &&
-                (
-                    layer.animals.find(function (element) {
-                      return element.toLowerCase().includes(search);
-                    }) ||
-                    layer.resources.find(function (element) {
-                      return element.toLowerCase().includes(search);
-                    }))
+            if (search !== "" && !isCordsSearch &&
+              (
+                layer.animals.find(function (element) {
+                  return element.toLowerCase().includes(search);
+                }) ||
+                layer.resources.find(function (element) {
+                  return element.toLowerCase().includes(search);
+                }))
             ) {
               layer.setStyle({
                 radius: 1.5,
@@ -137,9 +140,9 @@ class WorldMap extends React.Component {
             if (search !== "" && search.includes('_') && layer.name.toLowerCase().includes(search)) {
               layer.setStyle({
                 radius: 1.5,
-                color: "#00f",
-                opacity: 1,
-                fillOpacity: 1
+                color: "#ff7700",
+                opacity: .8,
+                fillOpacity: .6
               });
             }
           });
@@ -166,7 +169,7 @@ class WorldMap extends React.Component {
       Bosses: map.Bosses,
       Treasure: map.Treasure,
       'Control Points': map.ControlPoints,
-      Ships: map.Ships,
+      'Trade Ships': map.Ships,
       'Ghost Ships': map.GhostShips.addTo(map),
     }, {
       position: 'topright',
@@ -185,17 +188,17 @@ class WorldMap extends React.Component {
     map.on('zoomend', function () {
       if (map.getZoom() < 5) {
         if (!stickyLayers["Bosses"]) map.removeLayer(map.Bosses);
-        if (!stickyLayers["Stones"]) map.removeLayer(map.Stones);
+        if (!stickyLayers["Power Stones"]) map.removeLayer(map.Stones);
       } else {
         if (!stickyLayers["Bosses"]) {
           map.addLayer(map.Bosses);
           stickyLayers["Bosses"] = false;
         }
 
-        if (!stickyLayers["Stones"]) {
+        if (!stickyLayers["Power Stones"]) {
           map.addLayer(map.Stones);
-          stickyLayers["Stones"] = false;
-         }
+          stickyLayers["Power Stones"] = false;
+        }
       }
     });
 
@@ -209,6 +212,7 @@ class WorldMap extends React.Component {
         input.onchange();
       }
     }
+
     refreshFromQuery();
 
     const CPIcon = L.icon({
@@ -260,8 +264,8 @@ class WorldMap extends React.Component {
     });
 
     fetch('json/bosses.json', {
-        dataType: 'json'
-      })
+      dataType: 'json'
+    })
       .then(res => res.json())
       .then(function (bosses) {
         bosses.forEach(d => {
@@ -310,8 +314,8 @@ class WorldMap extends React.Component {
       });
 
     fetch('json/stones.json', {
-        dataType: 'json'
-      })
+      dataType: 'json'
+    })
       .then(res => res.json())
       .then(function (stones) {
         stones.forEach(d => {
@@ -332,8 +336,8 @@ class WorldMap extends React.Component {
       });
 
     fetch('json/shipPaths.json', {
-        dataType: 'json'
-      })
+      dataType: 'json'
+    })
       .then(res => res.json())
       .then(function (paths) {
         paths.forEach(path => {
@@ -372,8 +376,8 @@ class WorldMap extends React.Component {
       });
 
     fetch('json/islands.json', {
-        dataType: 'json'
-      })
+      dataType: 'json'
+    })
       .then(res => res.json())
       .then(function (islands) {
         for (let k in islands) {
@@ -382,13 +386,13 @@ class WorldMap extends React.Component {
             var pin = new L.Marker(unrealToLeaflet(islands[k].worldX, islands[k].worldY), {
               icon: CPIcon,
             });
-            pin.bindPopup(`Control Point`, {
+            pin.bindPopup(`Control Point - ${islands[k].id}`, {
               showOnMouseOver: true,
               autoPan: true,
               keepInView: true,
             });
 
-            map.ControlPoints.addLayer(pin)
+            map.ControlPoints.addLayer(pin);
             continue;
           }
 
@@ -405,11 +409,14 @@ class WorldMap extends React.Component {
             circle.animals = islands[k].animals.slice();
             circle.name = islands[k].name;
 
-            let html = `<b>${islands[k].name} - ${islands[k].id}</b><ul class='split-ul'>`;
-            for (let resource in circle.animals.sort()) {
-              html += "<li>" + circle.animals[resource] + "</li>";
+            let html = `<b>${islands[k].name} - ${islands[k].id}${islands[k].homeServer ? ' (Freeport)' : ''}</b>`;
+            if (circle.animals.length > 0) {
+              html += `<ul class='split-ul'>`;
+              for (let resource in circle.animals.sort()) {
+                html += "<li>" + circle.animals[resource] + "</li>";
+              }
+              html += "</ul>";
             }
-            html += "</ul>";
             if (islands[k].resources) {
               let resources = [];
               for (let key in islands[k].resources) {
@@ -585,7 +592,7 @@ class WorldMap extends React.Component {
   }
 
   render() {
-    return (<div id = "worldmap"> </div>)
+    return (<div id="worldmap"></div>)
   }
 }
 
@@ -605,16 +612,20 @@ class App extends React.Component {
     const {
       notification
     } = this.state
-    return ( <div className = "App">
-      <WorldMap/>
-      <div className = {
-        "notification " + (notification.type || "hidden")
-      }> {
-        notification.msg
-      } <button className = "close" onClick={
-        () => this.setState({
-          notification: {}
-        })}> Dismiss </button> </div> </div>
+    return (<div className="App">
+        <WorldMap/>
+        <div className={
+          "notification " + (notification.type || "hidden")
+        }> {
+          notification.msg
+        }
+          <button className="close" onClick={
+            () => this.setState({
+              notification: {}
+            })}> Dismiss
+          </button>
+        </div>
+      </div>
     )
   }
 }
@@ -648,7 +659,7 @@ function constraint(value, minRange, maxRange, minVal, maxVal) {
 }
 
 function unconstraint(value, minRange, maxRange, minVal, maxVal) {
-  return (minVal * maxRange - minVal * value - maxVal * minRange + maxVal * value) / (maxRange- minRange);
+  return (minVal * maxRange - minVal * value - maxVal * minRange + maxVal * value) / (maxRange - minRange);
 }
 
 function isOnGrid(x, y) {
@@ -659,6 +670,7 @@ function isOnGrid(x, y) {
 }
 
 const gridXName = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'].splice(0, config.ServersX);
+
 function ccc(x, y) {
   const precision = (256 / config.ServersX);
   const gridX = gridXName[Math.floor(x / precision)];
@@ -678,8 +690,8 @@ function tpCmdToXY(xLetter, yGrid, x, y) {
     100 - scaleLeafletToAtlas(precision * gridY + gpsY)];
 }
 
-ReactDOM.render( <
-  App refresh = {
+ReactDOM.render(<
+    App refresh={
     5 * 1000 /* 5 seconds */
   }
   />,
@@ -694,6 +706,7 @@ class IslandCircle extends L.Circle {
     this._popupMouseOut = this._popupMouseOut.bind(this)
     this._getParent = this._getParent.bind(this)
   }
+
   bindPopup(htmlContent, options) {
     if (options && options.showOnMouseOver) {
       L.Marker.prototype.bindPopup.apply(this, [htmlContent, options]);
@@ -715,6 +728,7 @@ class IslandCircle extends L.Circle {
       }, this);
     }
   }
+
   _popupMouseOut(e) {
     L.DomEvent.off(this._popup, "mouseout", this._popupMouseOut, this);
     var target = e.toElement || e.relatedTarget;
@@ -724,6 +738,7 @@ class IslandCircle extends L.Circle {
       return true;
     this.closePopup();
   }
+
   _getParent(element, className) {
     if (element == null)
       return false;
