@@ -81,7 +81,11 @@ class WorldMap extends React.Component {
         element.onchange = function (ev) {
           const search = document.getElementById("searchBox").value.toLowerCase();
           urlParams.set('s', search);
-          window.history.replaceState({}, document.title, `${location.pathname}?${urlParams}`);
+          if (window.parent) {
+            window.parent.history.replaceState({}, document.title, `${location.pathname}?${urlParams}`);
+          } else {
+            window.history.replaceState({}, document.title, `${location.pathname}?${urlParams}`);
+          }
 
           map.Pins.clearLayers();
 
