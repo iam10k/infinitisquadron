@@ -382,7 +382,7 @@ class WorldMap extends React.Component {
       .then(function (islands) {
         for (let k in islands) {
 
-          if (islands[k].isControlPoint) {
+          if (islands[k].isControlPoint || islands[k].name === 'ControlPoint') {
             var pin = new L.Marker(unrealToLeaflet(islands[k].worldX, islands[k].worldY), {
               icon: CPIcon,
             });
