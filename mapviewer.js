@@ -308,6 +308,22 @@ class WorldMap extends React.Component {
 
           map.Bosses.addLayer(pin);
         })
+
+        let krakenSpawn = L.circle([-128, 128], {
+          radius: 1.68,
+          interactive: true,
+          color: '#8300a8',
+          fillOpacity: 0,
+        }).bindPopup('Kraken Spawn Area');
+        let krakenWall = L.circle([-128, 128], {
+          radius: 2.35,
+          interactive: true,
+          color: '#bd0000',
+          fillOpacity: 0,
+        }).bindPopup(`Kraken Border Wall`);
+        map.Bosses.addLayer(krakenWall);
+        map.Bosses.addLayer(krakenSpawn);
+
       })
       .catch(error => {
         console.log(error)
@@ -319,7 +335,7 @@ class WorldMap extends React.Component {
       .then(res => res.json())
       .then(function (stones) {
         stones.forEach(d => {
-          var pin = new L.Marker(GPStoLeaflet(d.long, d.lat), {
+          let pin = new L.Marker(GPStoLeaflet(d.long, d.lat), {
             icon: stoneIcon,
           });
           pin.bindPopup(`${d.name}: ${d.long.toFixed(2)} / ${d.lat.toFixed(2)}`, {
